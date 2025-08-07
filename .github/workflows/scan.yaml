@@ -1,24 +1,28 @@
 name: ZAP Full Scan
 
 on:
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Run OWASP ZAP Full Scan
-        run: |
-          docker run --rm -v $(pwd):/zap/wrk/:rw \
-            ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py \
-            -t https://www.cloudyncs.com \
-            -g gen.conf \
-            -r zap_report.html \
-            -z "-config api.disablekey=true"
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Upload ZAP HTML Report
-        uses: actions/upload-artifact@v4
+      - name: Run ZAP Full Scan
+        id: zap
+        continue-on-error: true  # Ensure the workflow continues even if scan fails
+        run: |
+          docker pull owasp/zap2docker-stable
+          docker run --rm -v $(pwd):/zap/wrk/:rw owasp/zap2docker-stable zap-full-scan.py \
+            -t "https://www.cloudlyncs.com" \
+            -g gen.conf \
+            -r zap-report.html \
+            || true  # Prevents failure from stopping execution
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v3
         with:
-          name: zap-html-report
-          path: zap_report.html
+          name: zap-scan-report
+          path: zap-report.html
